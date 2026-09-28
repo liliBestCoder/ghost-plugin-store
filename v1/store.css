@@ -1,0 +1,55 @@
+/* The minimal store page. No web fonts, no images, nothing fetched. */
+:root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --line: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #2f81f7;
+    --danger: #f85149;
+}
+html[data-mode="light"] {
+    --bg: #ffffff;
+    --card: #f6f8fa;
+    --line: #d0d7de;
+    --text: #1f2328;
+    --muted: #59636e;
+    --accent: #0969da;
+    --danger: #cf222e;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+h1 { font-size: 18px; margin: 0 0 12px; }
+[hidden] { display: none !important; }
+.gs-notice, .gs-empty { color: var(--muted); }
+.gs-catalog { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.gs-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+.gs-card-head { display: flex; align-items: baseline; gap: 8px; }
+.gs-name { font-size: 15px; margin: 0; }
+.gs-version, .gs-status { color: var(--muted); font-size: 12px; }
+.gs-desc { margin: 6px 0; }
+.gs-card-notice { margin: 6px 0; color: var(--muted); }
+.gs-card-notice.is-error { color: var(--danger); }
+.gs-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.gs-btn {
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text);
+    border-radius: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+}
+.gs-btn.is-primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.gs-btn:disabled { opacity: 0.5; cursor: default; }
+.gs-link { color: var(--accent); font-size: 12px; }

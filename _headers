@@ -1,0 +1,9 @@
+/*
+  Content-Security-Policy: frame-ancestors http://127.0.0.1:23551
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+
+/v1/*
+  Content-Security-Policy: frame-ancestors http://127.0.0.1:23551
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff

@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "plugins": [
+    {
+      "id": "com.ghostproxifier.events-viewer",
+      "version": "1.0.0",
+      "minAppVersion": "1.2.0",
+      "name": {
+        "zh": "事件查看器",
+        "en": "Events viewer"
+      },
+      "description": {
+        "zh": "SDK 示例插件：用自己的插件 token 读取 Ghost 的控制平面事件流，在自己的页面里显示最近 200 条。",
+        "en": "The SDK example plugin: reads Ghost's control-plane event stream with its own plugin token and shows the latest 200 events in its own page."
+      },
+      "homepage": "https://github.com/liliBestCoder/ghost-plugin-events-viewer"
+    }
+  ]
+}
