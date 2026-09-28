@@ -14,6 +14,20 @@
         "en": "The SDK example plugin: reads Ghost's control-plane event stream with its own plugin token and shows the latest 200 events in its own page."
       },
       "homepage": "https://github.com/liliBestCoder/ghost-plugin-events-viewer"
+    },
+    {
+      "id": "com.ghostproxifier.showcase",
+      "version": "1.0.0",
+      "minAppVersion": "1.2.0",
+      "name": {
+        "zh": "插件能力示例",
+        "en": "Plugin Showcase"
+      },
+      "description": {
+        "zh": "开发者参考示例：官方参考插件，逐项演示 v1 插件能做的每一件事，并申请全部六个权限（含读取完整访问历史的 events.read.data）。",
+        "en": "A developer reference example: the official reference plugin demonstrates every v1 plugin capability and requests all six permissions (including events.read.data, the full browsing history)."
+      },
+      "homepage": "https://github.com/liliBestCoder/ghost-plugin-showcase"
     }
   ]
 }
