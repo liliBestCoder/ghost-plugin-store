@@ -28,6 +28,20 @@
         "en": "A developer reference example: the official reference plugin demonstrates every v1 plugin capability and requests all six permissions (including events.read.data, the full browsing history)."
       },
       "homepage": "https://github.com/liliBestCoder/ghost-plugin-showcase"
+    },
+    {
+      "id": "com.qtvz.xieyos.port-forwarder",
+      "version": "1.0.0",
+      "minAppVersion": "1.2.1",
+      "name": {
+        "zh": "端口转发",
+        "en": "Port Forwarder"
+      },
+      "description": {
+        "zh": "把本机端口转发到远端地址，可直连或经 Ghost 的上游节点（TCP/UDP）。",
+        "en": "Forward local ports to remote hosts, directly or through Ghost's upstream nodes (TCP/UDP)."
+      },
+      "homepage": "https://github.com/xieyos/ghost-plugin-port-forwarder"
     }
   ]
 }
