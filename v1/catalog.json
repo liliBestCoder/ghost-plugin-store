@@ -31,7 +31,7 @@
     },
     {
       "id": "com.qtvz.xieyos.port-forwarder",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "minAppVersion": "1.2.1",
       "name": {
         "zh": "端口转发",
