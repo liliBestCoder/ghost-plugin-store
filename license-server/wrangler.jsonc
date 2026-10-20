@@ -1,0 +1,15 @@
+{
+  // Ghost license server -- Cloudflare Worker config (Plain JS, KV binding).
+  // Secrets (LEMONSQUEEZY_WEBHOOK_SECRET, VARIANT_MAP, ALLOWED_ORIGIN) are set
+  // with `wrangler secret put` (production) or in local/.dev.vars (dev) -- never
+  // committed here.
+  "name": "ghost-license-server",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-20",
+  "vars": {
+    "STORE_ID": "REPLACE_ME"
+  },
+  "kv_namespaces": [
+    { "binding": "LICENSES", "id": "REPLACE_ME" }
+  ]
+}

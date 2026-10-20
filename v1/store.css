@@ -50,10 +50,22 @@ h1 { margin: 0; font-size: 20px; line-height: 1.4; letter-spacing: -.4px; font-w
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
 }
 .gs-status { margin: 0 0 10px; color: var(--accent); font-size: 11px; line-height: 16px; }
+.gs-status.is-expired { color: var(--danger); }
 .gs-card-notice { margin: 0 0 10px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .gs-card-notice.is-error { color: var(--danger); }
 .gs-card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
 .gs-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.gs-purchase { flex-basis: 100%; margin-top: 8px; }
+.gs-checkout-note { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 16px; }
+.gs-buy-tiers { display: flex; flex-wrap: wrap; gap: 6px; }
+.gs-buy-tier {
+    display: inline-flex; align-items: center; min-height: 28px; padding: 4px 12px;
+    border: 1px solid var(--line); border-radius: 6px; color: var(--text);
+    font: 600 11px/1.5 "Segoe UI", system-ui, sans-serif; text-decoration: none;
+    transition: border-color 150ms ease;
+}
+.gs-buy-tier:hover { border-color: var(--accent); }
+.gs-buy-tier:first-child { border-color: var(--button); }
 .gs-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 5px;
     min-height: 30px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px;
@@ -78,4 +90,4 @@ h1 { margin: 0; font-size: 20px; line-height: 1.4; letter-spacing: -.4px; font-w
 @media (max-width: 339px) {
     body { padding: 12px; }
 }
-@media (prefers-reduced-motion: reduce) { .gs-card, .gs-btn { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .gs-card, .gs-btn, .gs-buy-tier { transition: none; } }

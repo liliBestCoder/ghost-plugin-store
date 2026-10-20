@@ -1,0 +1,8 @@
+# Local dev secrets for `wrangler dev`. Copy to `.dev.vars` and fill in.
+# NEVER commit real secrets. Production values go in `wrangler secret put <NAME>`.
+LEMONSQUEEZY_WEBHOOK_SECRET=REPLACE_ME
+STORE_ID=REPLACE_ME
+ALLOWED_ORIGIN=REPLACE_ME
+# Optional JSON: map LS variant id/name -> { plugin, tier }.
+# Example: {"12345":{"plugin":"com.example.paid","tier":"month"}}
+VARIANT_MAP={}

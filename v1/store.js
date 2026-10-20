@@ -28,6 +28,7 @@
     var RUN_STATES = ["stopped", "running", "crashed"];
     var PHASES = ["resolving", "downloading", "verifying", "extracting", "committing"];
     var STATE_CHANGING = ["install", "upgrade", "uninstall", "enable", "disable"];
+    var TIER_IDS = ["month", "year", "perpetual"];
 
     var TEXT = {
         en: {
@@ -41,7 +42,12 @@
             err_network: "Could not reach the download. Check the network and try again.",
             err_verify: "Ghost Proxifier refused this: it did not pass its checks.",
             err_generic: "Something went wrong.", empty: "The catalog is empty.",
-            offline: "The catalog could not be loaded."
+            offline: "The catalog could not be loaded.",
+            buy: "Buy", renew: "Renew", licensed: "Licensed", expired: "License expired",
+            tier_month: "1 month", tier_year: "12 months", tier_perpetual: "Perpetual",
+            buy_starting: "Buy · {price}",
+            checkout_note: "You'll pay on the Lemon Squeezy checkout; after buying, open Ghost Proxifier and enter the license key emailed to you.",
+            unknown_license: "License status unknown. Buy or activate in Ghost Proxifier."
         },
         zh: {
             standalone: "请在 Ghost Proxifier 内打开商店以安装插件。",
@@ -54,7 +60,12 @@
             err_network: "无法下载，请检查网络后重试。",
             err_verify: "Ghost Proxifier 拒绝了这次操作：没有通过它的校验。",
             err_generic: "出了点问题。", empty: "目录是空的。",
-            offline: "无法加载插件目录。"
+            offline: "无法加载插件目录。",
+            buy: "购买", renew: "续费", licensed: "已授权", expired: "许可已过期",
+            tier_month: "1 个月", tier_year: "12 个月", tier_perpetual: "永久买断",
+            buy_starting: "购买 · {price}",
+            checkout_note: "付款将在 Lemon Squeezy 结账页完成；购买后请打开 Ghost Proxifier，输入邮件中的许可密钥进行激活。",
+            unknown_license: "许可状态未知——请在 Ghost Proxifier 中购买或激活。"
         }
     };
 
@@ -68,6 +79,7 @@
     var pending = {};                  // id -> {type, opId|null, timer}
     var ops = {};                      // opId -> id
     var notices = {};                  // id -> {text, error}
+    var entitlements = {};             // id -> {licensed, tier, expiresAt} reported by the shell (optional)
     var lastHeight = -1;
     var wired = false;
 
@@ -112,6 +124,30 @@
         return Array.from(t).slice(0, max).join("");
     }
     function copy(o) { return JSON.parse(JSON.stringify(o)); }
+
+    // Turns the optional paid/pricing block of a catalog entry into a safe,
+    // display-only shape. Returns null when paid with no usable tier, so the
+    // entry is skipped entirely (a store marked for sale must not render a
+    // broken Buy UI).
+    function parsePricing(p) {
+        if (!p || typeof p !== "object") return null;
+        var currency = typeof p.currency === "string" && /^[A-Z]{3}$/.test(p.currency) ? p.currency : "CNY";
+        if (!Array.isArray(p.tiers) || p.tiers.length < 1 || p.tiers.length > TIER_IDS.length) return null;
+        var seen = {}, tiers = [];
+        p.tiers.forEach(function (t) {
+            if (!t || typeof t !== "object") return;
+            var id = TIER_IDS.indexOf(t.id) >= 0 ? t.id : "";
+            if (!id || seen[id]) return;
+            var amount = typeof t.amount === "number" && isFinite(t.amount) && t.amount > 0 && t.amount <= 1e9 ? t.amount : 0;
+            var price = clean(t.price, 32);
+            var checkoutUrl = isHttpsUrl(t.checkoutUrl) ? t.checkoutUrl : "";
+            if (!price || !checkoutUrl) return;   // a tier without a shown price or a jump target is useless
+            seen[id] = true;
+            tiers.push({ id: id, amount: amount, price: price, checkoutUrl: checkoutUrl });
+        });
+        if (tiers.length === 0) return null;
+        return { currency: currency, tiers: tiers };
+    }
 
     function readParams() {
         var q;
@@ -180,6 +216,18 @@
     // {appVersion, lang, theme, installed:[{id, version, enabled, state}]} --
     // exactly the fields spec §6 lists. Anything else the shell adds is not read.
     function onState(m) {
+        entitlements = {};
+        if (m.entitlements !== undefined) {
+            if (!Array.isArray(m.entitlements)) return drop("bad_payload");
+            m.entitlements.forEach(function (x) {
+                if (!x || typeof x !== "object" || !isPluginId(x.id) || entitlements[x.id]) return;
+                var e = {};
+                if (typeof x.licensed === "boolean") e.licensed = x.licensed;
+                if (TIER_IDS.indexOf(x.tier) >= 0) e.tier = x.tier;
+                if (typeof x.expiresAt === "number" || x.expiresAt === null) e.expiresAt = x.expiresAt;
+                entitlements[x.id] = e;
+            });
+        }
         if (typeof m.appVersion !== "string" || (m.appVersion !== "" && !isVersion(m.appVersion))) return drop("bad_payload");
         if (m.lang !== "zh" && m.lang !== "en") return drop("bad_payload");
         if (m.theme !== "dark" && m.theme !== "light") return drop("bad_payload");
@@ -273,6 +321,9 @@
             if (!e.name || typeof e.name !== "object" || !clean(e.name.en, MAX_NAME)) return;
             seen[e.id] = true;
             var d = e.description && typeof e.description === "object" ? e.description : {};
+            var paid = e.paid === true;
+            var pricing = paid ? parsePricing(e.pricing) : null;
+            if (paid && !pricing) return;          // a store marked for sale must not render a broken Buy UI
             out.push({
                 id: e.id,
                 version: isVersion(e.version) ? e.version : "",
@@ -280,7 +331,9 @@
                 name: { en: clean(e.name.en, MAX_NAME), zh: clean(e.name.zh, MAX_NAME) },
                 description: { en: clean(d.en, MAX_DESC), zh: clean(d.zh, MAX_DESC) },
                 icon: isIconPath(e.icon) ? e.icon : "",
-                homepage: isHttpsUrl(e.homepage) ? e.homepage : ""
+                homepage: isHttpsUrl(e.homepage) ? e.homepage : "",
+                paid: paid,
+                pricing: pricing
             });
         });
         entries = out;
@@ -298,6 +351,26 @@
         var a = [];
         if (entry.version && isVersion(rec.version) && compareVersion(rec.version, entry.version) < 0) a.push("upgrade");
         return a.concat(rec.enabled ? ["open", "disable", "uninstall"] : ["enable", "uninstall"]);
+    }
+
+    // ---- paid licensing (display-only) -------------------------------------------------
+
+    function isPaid(entry) { return !!(entry && entry.paid); }
+    function entitlementOf(id) { return entitlements[id] || null; }
+    function startingTier(entry) {
+        if (!entry || !entry.pricing || !entry.pricing.tiers || entry.pricing.tiers.length === 0) return null;
+        var best = entry.pricing.tiers[0];
+        entry.pricing.tiers.forEach(function (t) { if (t.amount < best.amount) best = t; });
+        return best;
+    }
+    // "free" | "unowned" | "expired" | "valid". The shell may not have shipped
+    // activation yet: without an entitlement report a paid plugin is "unowned"
+    // and the store shows Buy instead of a false Install.
+    function licenseStatus(entry, ent) {
+        if (!isPaid(entry)) return "free";
+        if (!ent || ent.licensed !== true) return "unowned";
+        if (typeof ent.expiresAt === "number" && ent.expiresAt > 0 && Date.now() > ent.expiresAt) return "expired";
+        return "valid";                              // perpetual (null) or still within its window
     }
 
     function state() {
@@ -351,24 +424,62 @@
             description.title = desc; // full copy remains available when the compact card clamps it
             li.appendChild(description);
         }
+        var ent = entitlements[e.id] || null;
+        var lv = licenseStatus(e, ent);
+        var locked = e.paid && lv !== "valid";       // you don't own it -> Buy, not install actions
         var status = rec ? t("installed", { v: rec.version }) + " · " +
                            (rec.enabled ? t("state_" + rec.state) : t("state_disabled")) : "";
-        var acts = actionsFor(e, rec, s.appVersion);
-        if (!rec && acts.length === 0) status = t("needs_app", { v: e.minAppVersion });
-        if (status) li.appendChild(el("p", "gs-status", status));
+        var acts = !locked ? actionsFor(e, rec, s.appVersion) : [];
+        if (!rec && acts.length === 0 && !locked) status = t("needs_app", { v: e.minAppVersion });
+        var badge = "";
+        if (e.paid) {
+            if (lv === "valid") badge = t("licensed");
+            else if (lv === "expired") badge = t("expired");
+        }
+        if (badge) status = status ? status + " · " + badge : badge;
+        if (status) li.appendChild(el("p", lv === "expired" ? "gs-status is-expired" : "gs-status", status));
         var busy = !!pending[e.id];
         var n = busy ? { text: t("busy"), error: false } : notices[e.id];
         if (busy && notices[e.id]) n = notices[e.id];
         if (n) li.appendChild(el("p", "gs-card-notice" + (n.error ? " is-error" : ""), n.text));
         var box = el("div", "gs-actions");
-        acts.forEach(function (a, i) {
-            var b = el("button", "gs-btn" + (i === 0 ? " is-primary" : ""), t(a));
-            b.type = "button";
-            b.setAttribute("data-action", a);
-            b.setAttribute("data-plugin-id", e.id);
-            b.disabled = busy;
-            box.appendChild(b);
-        });
+        if (locked) {
+            var cheap = startingTier(e);
+            var buyLabel = lv === "expired" ? t("renew")
+                         : (cheap ? t("buy_starting", { price: cheap.price }) : t("buy"));
+            var buy = el("button", "gs-btn is-primary gs-buy", buyLabel);
+            buy.type = "button";
+            buy.setAttribute("data-action", "buy");
+            buy.setAttribute("data-plugin-id", e.id);
+            buy.disabled = busy;
+            box.appendChild(buy);
+            if (e.pricing && e.pricing.tiers) {
+                var purchase = el("div", "gs-purchase");
+                purchase.hidden = true;
+                purchase.appendChild(el("p", "gs-checkout-note", t("checkout_note")));
+                var tiers = el("div", "gs-buy-tiers");
+                e.pricing.tiers.forEach(function (tier) {
+                    var a = el("a", "gs-buy-tier", t("tier_" + tier.id) + " · " + tier.price);
+                    a.href = tier.checkoutUrl;
+                    a.rel = "noopener noreferrer";
+                    a.target = "_blank";
+                    a.setAttribute("data-link", "buy");
+                    a.setAttribute("data-plugin-id", e.id);
+                    tiers.appendChild(a);
+                });
+                purchase.appendChild(tiers);
+                box.appendChild(purchase);
+            }
+        } else {
+            acts.forEach(function (a, i) {
+                var b = el("button", "gs-btn" + (i === 0 ? " is-primary" : ""), t(a));
+                b.type = "button";
+                b.setAttribute("data-action", a);
+                b.setAttribute("data-plugin-id", e.id);
+                b.disabled = busy;
+                box.appendChild(b);
+            });
+        }
         var footer = el("div", "gs-card-footer");
         footer.appendChild(box);
         if (e.homepage) {
@@ -418,6 +529,15 @@
         var btn = target && target.closest ? target.closest("button[data-action]") : null;
         if (btn && !btn.disabled) {
             if (window.parent === window && !shell) { showNotice("standalone"); return; }
+            if (btn.getAttribute("data-action") === "buy") {
+                var card = btn.closest(".gs-card");
+                var purchase = card ? card.querySelector(".gs-purchase") : null;
+                if (purchase) {
+                    purchase.hidden = !purchase.hidden;
+                    card.classList.toggle("is-purchasing", !purchase.hidden);
+                }
+                return;
+            }
             act(btn.getAttribute("data-action"), btn.getAttribute("data-plugin-id"));
         }
     }
@@ -456,6 +576,10 @@
         post: post,
         act: act,
         actionsFor: actionsFor,
+        licenseStatus: licenseStatus,
+        isPaid: isPaid,
+        startingTier: startingTier,
+        entitlementOf: entitlementOf,
         loadCatalog: loadCatalog,
         catalog: function () { return copy(entries); },
         state: state,
