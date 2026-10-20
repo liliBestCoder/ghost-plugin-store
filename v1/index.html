@@ -11,11 +11,17 @@
 </head>
 <body>
 <header class="gs-header">
+  <p class="gs-brand">GHOST PROXIFIER <span class="gs-brand-divider" aria-hidden="true">/</span> <span data-i18n="store_label">PLUGIN STORE</span></p>
   <h1 id="gsTitle">Plugins</h1>
+  <p class="gs-subtitle" data-i18n="subtitle">A little more power for your workspace. Find your next favorite plugin.</p>
   <p id="gsNotice" class="gs-notice" role="status" hidden></p>
 </header>
 <main>
-  <ul id="gsCatalog" class="gs-catalog"></ul>
+  <div class="gs-section-head">
+    <h2 id="gsCatalogTitle" data-i18n="all_plugins">All plugins</h2>
+    <span id="gsCount" class="gs-count"></span>
+  </div>
+  <ul id="gsCatalog" class="gs-catalog" aria-labelledby="gsCatalogTitle"></ul>
   <p id="gsEmpty" class="gs-empty" hidden></p>
 </main>
 </body>

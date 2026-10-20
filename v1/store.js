@@ -14,8 +14,8 @@
 //     the type and its fields. A message that fails is counted (dropped()) and
 //     never answered.
 //   * Every string that came from outside (the catalog, the shell) reaches the
-//     DOM through textContent only. No innerHTML, no framework, nothing
-//     fetched but catalog.json from this page's own origin.
+//     DOM through textContent only. Artwork is restricted to local icon files;
+//     catalog.json and icons are fetched from this page's own origin.
 //
 // Classic script, one global: window.ghostStorePage.
 (function () {
@@ -31,6 +31,9 @@
 
     var TEXT = {
         en: {
+            store_label: "PLUGIN STORE", all_plugins: "All plugins",
+            subtitle: "A little more power for your workspace. Find your next favorite plugin.",
+            standalone: "Open this store in Ghost Proxifier to install plugins.",
             title: "Plugins", install: "Install", upgrade: "Upgrade", uninstall: "Uninstall", enable: "Enable",
             disable: "Disable", open: "Open", homepage: "Homepage", installed: "Installed {v}",
             state_running: "running", state_stopped: "stopped", state_crashed: "crashed", state_disabled: "disabled",
@@ -43,6 +46,9 @@
             offline: "The catalog could not be loaded."
         },
         zh: {
+            store_label: "插件商店", all_plugins: "全部插件",
+            subtitle: "为你的工作空间，增添更多可能。发现下一款趁手的插件。",
+            standalone: "请在 Ghost Proxifier 内打开商店以安装插件。",
             title: "插件商店", install: "安装", upgrade: "升级", uninstall: "卸载", enable: "启用",
             disable: "停用", open: "打开", homepage: "主页", installed: "已安装 {v}",
             state_running: "运行中", state_stopped: "已停止", state_crashed: "已崩溃", state_disabled: "已停用",
@@ -95,6 +101,10 @@
         return 0;
     }
     function isOpId(s) { return typeof s === "string" && /^[A-Za-z0-9-]{1,64}$/.test(s); }
+    function isIconPath(s) {
+        return typeof s === "string" && s.length <= 160 &&
+            /^icons\/[a-zA-Z0-9][a-zA-Z0-9._-]*\.(png|webp)$/.test(s);
+    }
     function isHttpsUrl(s) {
         if (typeof s !== "string" || s.length > 2048 || !/^https:\/\/[^\s"'<>\\`]+$/.test(s)) return false;
         try { return new URL(s).protocol === "https:"; } catch (e) { return false; }
@@ -256,7 +266,8 @@
 
     // ---- the catalog ------------------------------------------------------------------------
 
-    // {v:1, plugins:[{id, version?, minAppVersion?, name:{en, zh?}, description?:{en, zh?}, homepage?}]}.
+    // Icons are optional same-origin PNG/WebP paths under icons/; never remote URLs.
+    // {v:1, plugins:[{id, version?, minAppVersion?, name:{en, zh?}, description?:{en, zh?}, homepage?, icon?}]}.
     // A bad entry is skipped, not the whole catalog; a repeated id keeps the first.
     function loadCatalog(doc) {
         var out = [], seen = {};
@@ -272,6 +283,7 @@
                 minAppVersion: isVersion(e.minAppVersion) ? e.minAppVersion : "",
                 name: { en: clean(e.name.en, MAX_NAME), zh: clean(e.name.zh, MAX_NAME) },
                 description: { en: clean(d.en, MAX_DESC), zh: clean(d.zh, MAX_DESC) },
+                icon: isIconPath(e.icon) ? e.icon : "",
                 homepage: isHttpsUrl(e.homepage) ? e.homepage : ""
             });
         });
@@ -312,6 +324,13 @@
         document.documentElement.setAttribute("data-mode", s.theme);
         var title = $("gsTitle");
         if (title) title.textContent = t("title");
+        document.querySelectorAll(".gs-header [data-i18n], .gs-section-head [data-i18n]").forEach(function (n) {
+            n.textContent = t(n.getAttribute("data-i18n"));
+        });
+        var notice = $("gsNotice");
+        if (notice && notice.getAttribute("data-notice")) {
+            notice.textContent = t(notice.getAttribute("data-notice"));
+        }
     }
 
     function renderEntry(e, s) {
@@ -320,9 +339,19 @@
         var li = el("li", "gs-card");
         li.setAttribute("data-plugin-id", e.id);
         var head = el("div", "gs-card-head");
-        head.appendChild(el("h2", "gs-name", (s.lang === "zh" && e.name.zh) || e.name.en));
+        var icon = el("img", "gs-icon");
+        icon.alt = "";
+        icon.width = 56;
+        icon.height = 56;
+        icon.decoding = "async";
+        icon.addEventListener("error", function () {
+            icon.src = "icons/plugin-default.svg";
+        }, { once: true });
+        icon.src = e.icon || "icons/plugin-default.svg";
+        head.appendChild(icon);
         if (e.version) head.appendChild(el("span", "gs-version", "v" + e.version));
         li.appendChild(head);
+        li.appendChild(el("h3", "gs-name", (s.lang === "zh" && e.name.zh) || e.name.en));
         var desc = (s.lang === "zh" && e.description.zh) || e.description.en;
         if (desc) li.appendChild(el("p", "gs-desc", desc));
         var status = rec ? t("installed", { v: rec.version }) + " · " +
@@ -343,14 +372,17 @@
             b.disabled = busy;
             box.appendChild(b);
         });
-        li.appendChild(box);
+        var footer = el("div", "gs-card-footer");
+        footer.appendChild(box);
         if (e.homepage) {
             var link = el("a", "gs-link", t("homepage"));
             link.href = e.homepage;
             link.rel = "noopener noreferrer";
+            link.target = "_blank";
             link.setAttribute("data-link", "homepage");
-            li.appendChild(link);
+            footer.appendChild(link);
         }
+        li.appendChild(footer);
         return li;
     }
 
@@ -360,6 +392,8 @@
         var s = state();
         while (list.firstChild) list.removeChild(list.firstChild);
         entries.forEach(function (e) { list.appendChild(renderEntry(e, s)); });
+        var count = $("gsCount");
+        if (count) count.textContent = String(entries.length).padStart(2, "0");
         var empty = $("gsEmpty");
         if (empty) { empty.hidden = entries.length > 0; empty.textContent = t("empty"); }
         reportHeight();
@@ -379,18 +413,23 @@
         var target = ev.target;
         var link = target && target.closest ? target.closest("a[data-link]") : null;
         if (link) {
+            if (window.parent === window) return; // ordinary browser: follow the safe https link
             ev.preventDefault();                  // the frame has no allow-popups: the shell opens it
             post(build.openLink(link.href));
             return;
         }
         var btn = target && target.closest ? target.closest("button[data-action]") : null;
-        if (btn && !btn.disabled) act(btn.getAttribute("data-action"), btn.getAttribute("data-plugin-id"));
+        if (btn && !btn.disabled) {
+            if (window.parent === window && !shell) { showNotice("standalone"); return; }
+            act(btn.getAttribute("data-action"), btn.getAttribute("data-plugin-id"));
+        }
     }
 
     function showNotice(key) {
         var n = $("gsNotice");
         if (!n) return;
         n.textContent = t(key);
+        n.setAttribute("data-notice", key);
         n.hidden = false;
     }
 
@@ -398,6 +437,7 @@
         if (wired) return;
         wired = true;
         window.addEventListener("message", handleMessage);
+        window.addEventListener("resize", reportHeight);
         applyDocument();
         var list = $("gsCatalog");
         if (list) list.addEventListener("click", onClick);

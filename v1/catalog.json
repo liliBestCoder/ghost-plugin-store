@@ -13,7 +13,8 @@
         "zh": "SDK 示例插件：用自己的插件 token 读取 Ghost 的控制平面事件流，在自己的页面里显示最近 200 条。",
         "en": "The SDK example plugin: reads Ghost's control-plane event stream with its own plugin token and shows the latest 200 events in its own page."
       },
-      "homepage": "https://github.com/liliBestCoder/ghost-plugin-events-viewer"
+      "homepage": "https://github.com/liliBestCoder/ghost-plugin-events-viewer",
+      "icon": "icons/events-viewer.png"
     },
     {
       "id": "com.ghostproxifier.showcase",
@@ -27,7 +28,8 @@
         "zh": "开发者参考示例：官方参考插件，逐项演示 v1 插件能做的每一件事，并申请全部六个权限（含读取完整访问历史的 events.read.data）。",
         "en": "A developer reference example: the official reference plugin demonstrates every v1 plugin capability and requests all six permissions (including events.read.data, the full browsing history)."
       },
-      "homepage": "https://github.com/liliBestCoder/ghost-plugin-showcase"
+      "homepage": "https://github.com/liliBestCoder/ghost-plugin-showcase",
+      "icon": "icons/showcase.png"
     },
     {
       "id": "com.qtvz.xieyos.port-forwarder",
@@ -41,7 +43,8 @@
         "zh": "把本机端口转发到远端地址，可直连或经 Ghost 的上游节点（TCP/UDP）。",
         "en": "Forward local ports to remote hosts, directly or through Ghost's upstream nodes (TCP/UDP)."
       },
-      "homepage": "https://github.com/xieyos/ghost-plugin-port-forwarder"
+      "homepage": "https://github.com/xieyos/ghost-plugin-port-forwarder",
+      "icon": "icons/port-forwarder.png"
     }
   ]
 }
