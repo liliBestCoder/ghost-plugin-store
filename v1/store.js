@@ -31,8 +31,6 @@
 
     var TEXT = {
         en: {
-            store_label: "PLUGIN STORE", all_plugins: "All plugins",
-            subtitle: "A little more power for your workspace. Find your next favorite plugin.",
             standalone: "Open this store in Ghost Proxifier to install plugins.",
             title: "Plugins", install: "Install", upgrade: "Upgrade", uninstall: "Uninstall", enable: "Enable",
             disable: "Disable", open: "Open", homepage: "Homepage", installed: "Installed {v}",
@@ -46,8 +44,6 @@
             offline: "The catalog could not be loaded."
         },
         zh: {
-            store_label: "插件商店", all_plugins: "全部插件",
-            subtitle: "为你的工作空间，增添更多可能。发现下一款趁手的插件。",
             standalone: "请在 Ghost Proxifier 内打开商店以安装插件。",
             title: "插件商店", install: "安装", upgrade: "升级", uninstall: "卸载", enable: "启用",
             disable: "停用", open: "打开", homepage: "主页", installed: "已安装 {v}",
@@ -324,9 +320,6 @@
         document.documentElement.setAttribute("data-mode", s.theme);
         var title = $("gsTitle");
         if (title) title.textContent = t("title");
-        document.querySelectorAll(".gs-header [data-i18n], .gs-section-head [data-i18n]").forEach(function (n) {
-            n.textContent = t(n.getAttribute("data-i18n"));
-        });
         var notice = $("gsNotice");
         if (notice && notice.getAttribute("data-notice")) {
             notice.textContent = t(notice.getAttribute("data-notice"));
@@ -341,8 +334,8 @@
         var head = el("div", "gs-card-head");
         var icon = el("img", "gs-icon");
         icon.alt = "";
-        icon.width = 56;
-        icon.height = 56;
+        icon.width = 36;
+        icon.height = 36;
         icon.decoding = "async";
         icon.addEventListener("error", function () {
             icon.src = "icons/plugin-default.svg";
@@ -351,9 +344,13 @@
         head.appendChild(icon);
         if (e.version) head.appendChild(el("span", "gs-version", "v" + e.version));
         li.appendChild(head);
-        li.appendChild(el("h3", "gs-name", (s.lang === "zh" && e.name.zh) || e.name.en));
+        li.appendChild(el("h2", "gs-name", (s.lang === "zh" && e.name.zh) || e.name.en));
         var desc = (s.lang === "zh" && e.description.zh) || e.description.en;
-        if (desc) li.appendChild(el("p", "gs-desc", desc));
+        if (desc) {
+            var description = el("p", "gs-desc", desc);
+            description.title = desc; // full copy remains available when the compact card clamps it
+            li.appendChild(description);
+        }
         var status = rec ? t("installed", { v: rec.version }) + " · " +
                            (rec.enabled ? t("state_" + rec.state) : t("state_disabled")) : "";
         var acts = actionsFor(e, rec, s.appVersion);
