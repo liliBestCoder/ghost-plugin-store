@@ -47,7 +47,30 @@
             tier_month: "1 month", tier_year: "12 months", tier_perpetual: "Perpetual",
             buy_starting: "Buy · {price}",
             checkout_note: "You'll pay on the Lemon Squeezy checkout; after buying, open Ghost Proxifier and enter the license key emailed to you.",
-            unknown_license: "License status unknown. Buy or activate in Ghost Proxifier."
+            unknown_license: "License status unknown. Buy or activate in Ghost Proxifier.",
+            plan_tiers_title: "Pricing tiers",
+            plan_free_title: "License",
+            plan_free_tag: "Free & Open",
+            plan_free_desc: "Open source · No purchase required",
+            plan_licensed_desc: "Commercial license active",
+            tier_month_name: "1 mo",
+            tier_year_name: "12 mo",
+            tier_perpetual_name: "Lifetime",
+            filter_all: "All",
+            filter_free: "Free",
+            filter_paid: "Paid",
+            search_placeholder: "Search plugins...",
+            btn_activate: "Activate",
+            dlg_activate_title: "Activate License",
+            dlg_activate_label: "Enter license key:",
+            dlg_activate_placeholder: "Paste base64url license key here...",
+            dlg_activate_submit: "Activate Now",
+            dlg_activate_cancel: "Cancel",
+            activate_empty_key: "Please enter a valid license key.",
+            activate_submitting: "Verifying…",
+            activate_success: "License activated successfully!",
+            activate_failed: "Activation rejected by Ghost Proxifier.",
+            empty_search: "No matching plugins found."
         },
         zh: {
             standalone: "请在 Ghost Proxifier 内打开商店以安装插件。",
@@ -65,7 +88,30 @@
             tier_month: "1 个月", tier_year: "12 个月", tier_perpetual: "永久买断",
             buy_starting: "购买 · {price}",
             checkout_note: "付款将在 Lemon Squeezy 结账页完成；购买后请打开 Ghost Proxifier，输入邮件中的许可密钥进行激活。",
-            unknown_license: "许可状态未知——请在 Ghost Proxifier 中购买或激活。"
+            unknown_license: "许可状态未知——请在 Ghost Proxifier 中购买或激活。",
+            plan_tiers_title: "授权方案",
+            plan_free_title: "使用许可",
+            plan_free_tag: "开源免费",
+            plan_free_desc: "无需购买 · 永久免费即装即用",
+            plan_licensed_desc: "商业授权已生效",
+            tier_month_name: "1 个月",
+            tier_year_name: "12 个月",
+            tier_perpetual_name: "永久",
+            filter_all: "全部",
+            filter_free: "开源免费",
+            filter_paid: "商业授权",
+            search_placeholder: "搜索插件...",
+            btn_activate: "输入许可",
+            dlg_activate_title: "激活插件许可",
+            dlg_activate_label: "输入许可证密钥：",
+            dlg_activate_placeholder: "在此粘贴 base64url 格式的许可密钥...",
+            dlg_activate_submit: "立即激活",
+            dlg_activate_cancel: "取消",
+            activate_empty_key: "请输入有效的许可密钥。",
+            activate_submitting: "正在验证…",
+            activate_success: "许可激活成功！",
+            activate_failed: "客户端拒绝了此许可（验签失败或机器不匹配）。",
+            empty_search: "未找到匹配的插件。"
         }
     };
 
@@ -80,6 +126,9 @@
     var ops = {};                      // opId -> id
     var notices = {};                  // id -> {text, error}
     var entitlements = {};             // id -> {licensed, tier, expiresAt} reported by the shell (optional)
+    var currentFilter = "all";         // "all" | "free" | "paid"
+    var searchQuery = "";
+    var pendingActivation = null;      // { pluginId, opId, at }
     var lastHeight = -1;
     var wired = false;
 
@@ -125,10 +174,6 @@
     }
     function copy(o) { return JSON.parse(JSON.stringify(o)); }
 
-    // Turns the optional paid/pricing block of a catalog entry into a safe,
-    // display-only shape. Returns null when paid with no usable tier, so the
-    // entry is skipped entirely (a store marked for sale must not render a
-    // broken Buy UI).
     function parsePricing(p) {
         if (!p || typeof p !== "object") return null;
         var currency = typeof p.currency === "string" && /^[A-Z]{3}$/.test(p.currency) ? p.currency : "CNY";
@@ -209,12 +254,10 @@
         case "accepted": return onAccepted(m);
         case "progress": return onProgress(m);
         case "result": return onResult(m);
-        default: return drop("unknown_type");   // machineId too: licences are PR ①'s
+        default: return drop("unknown_type");
         }
     }
 
-    // {appVersion, lang, theme, installed:[{id, version, enabled, state}]} --
-    // exactly the fields spec §6 lists. Anything else the shell adds is not read.
     function onState(m) {
         entitlements = {};
         if (m.entitlements !== undefined) {
@@ -245,12 +288,19 @@
     }
 
     function onAccepted(m) {
-        if (!isPluginId(m.id) || !isOpId(m.opId)) return drop("bad_payload");
-        var p = pending[m.id];
-        if (!p || p.opId !== null) return drop("unknown_op");
-        p.opId = m.opId;
-        if (p.timer) { clearTimeout(p.timer); p.timer = null; }
-        ops[m.opId] = m.id;
+        if (!isOpId(m.opId)) return drop("bad_payload");
+        if (m.id !== undefined) {
+            if (!isPluginId(m.id)) return drop("bad_payload");
+            var p = pending[m.id];
+            if (!p || p.opId !== null) return drop("unknown_op");
+            p.opId = m.opId;
+            if (p.timer) { clearTimeout(p.timer); p.timer = null; }
+            ops[m.opId] = m.id;
+        } else if (pendingActivation) {
+            pendingActivation.opId = m.opId;
+        } else {
+            return drop("unknown_op");
+        }
     }
 
     function onProgress(m) {
@@ -268,14 +318,36 @@
     function onResult(m) {
         if (!isOpId(m.opId) || typeof m.ok !== "boolean") return drop("bad_payload");
         if (!m.ok && typeof m.error !== "string") return drop("bad_payload");
-        var id = ops[m.opId];
-        if (!id) return drop("unknown_op");     // not ours: nothing is released for it
-        delete ops[m.opId];
-        release(id);
-        if (m.ok || m.error === "user_cancelled") delete notices[id];
-        else notices[id] = { text: m.error === "network_failed" ? t("err_network")
-                                    : m.error === "verify_failed" ? t("err_verify") : t("err_generic"), error: true };
-        render();
+        if (m.id !== undefined) {
+            var id = ops[m.opId];
+            if (!id) return drop("unknown_op");
+            delete ops[m.opId];
+            release(id);
+            if (m.ok || m.error === "user_cancelled") delete notices[id];
+            else notices[id] = { text: m.error === "network_failed" ? t("err_network")
+                                        : m.error === "verify_failed" ? t("err_verify") : t("err_generic"), error: true };
+            render();
+        } else if (pendingActivation && (!pendingActivation.opId || pendingActivation.opId === m.opId)) {
+            var isOk = m.ok;
+            var errCode = m.error;
+            if (isOk) {
+                closeActivateModal();
+                showNotice("activate_success");
+            } else {
+                var err = $("gsModalError");
+                if (err) {
+                    err.textContent = errCode === "user_cancelled" ? t("err_generic") : t("activate_failed");
+                    err.hidden = false;
+                }
+                var sub = $("gsModalSubmit");
+                if (sub) { sub.disabled = false; sub.textContent = t("dlg_activate_submit"); }
+                var inp = $("gsLicenseInput");
+                if (inp) inp.disabled = false;
+            }
+            pendingActivation = null;
+        } else {
+            return drop("unknown_op");
+        }
     }
 
     function release(id) {
@@ -286,10 +358,6 @@
 
     // ---- actions -------------------------------------------------------------------------
 
-    // One state change per plugin at a time. The shell answers a message it
-    // takes with `accepted` at once; one it drops (no user gesture, focus not in
-    // the store) it does not answer at all -- so an operation that is not
-    // accepted within acceptTimeoutMs is let go, and the buttons come back.
     function act(type, id) {
         if (STATE_CHANGING.indexOf(type) >= 0) {
             if (pending[id]) return false;
@@ -310,9 +378,6 @@
 
     // ---- the catalog ------------------------------------------------------------------------
 
-    // Icons are optional same-origin PNG/WebP paths under icons/; never remote URLs.
-    // {v:1, plugins:[{id, version?, minAppVersion?, name:{en, zh?}, description?:{en, zh?}, homepage?, icon?}]}.
-    // A bad entry is skipped, not the whole catalog; a repeated id keeps the first.
     function loadCatalog(doc) {
         var out = [], seen = {};
         var list = doc && typeof doc === "object" && doc.v === 1 && Array.isArray(doc.plugins) ? doc.plugins : [];
@@ -323,7 +388,7 @@
             var d = e.description && typeof e.description === "object" ? e.description : {};
             var paid = e.paid === true;
             var pricing = paid ? parsePricing(e.pricing) : null;
-            if (paid && !pricing) return;          // a store marked for sale must not render a broken Buy UI
+            if (paid && !pricing) return;
             out.push({
                 id: e.id,
                 version: isVersion(e.version) ? e.version : "",
@@ -341,8 +406,6 @@
         return out.length;
     }
 
-    // What the buttons are for one entry: a pure function of the entry, the
-    // installed record the shell reported (or none) and the app version.
     function actionsFor(entry, rec, appVersion) {
         if (!rec) {
             if (entry.minAppVersion && appVersion && compareVersion(appVersion, entry.minAppVersion) < 0) return [];
@@ -353,7 +416,7 @@
         return a.concat(rec.enabled ? ["open", "disable", "uninstall"] : ["enable", "uninstall"]);
     }
 
-    // ---- paid licensing (display-only) -------------------------------------------------
+    // ---- paid licensing -------------------------------------------------
 
     function isPaid(entry) { return !!(entry && entry.paid); }
     function entitlementOf(id) { return entitlements[id] || null; }
@@ -363,14 +426,11 @@
         entry.pricing.tiers.forEach(function (t) { if (t.amount < best.amount) best = t; });
         return best;
     }
-    // "free" | "unowned" | "expired" | "valid". The shell may not have shipped
-    // activation yet: without an entitlement report a paid plugin is "unowned"
-    // and the store shows Buy instead of a false Install.
     function licenseStatus(entry, ent) {
         if (!isPaid(entry)) return "free";
         if (!ent || ent.licensed !== true) return "unowned";
         if (typeof ent.expiresAt === "number" && ent.expiresAt > 0 && Date.now() > ent.expiresAt) return "expired";
-        return "valid";                              // perpetual (null) or still within its window
+        return "valid";
     }
 
     function state() {
@@ -397,6 +457,41 @@
         if (notice && notice.getAttribute("data-notice")) {
             notice.textContent = t(notice.getAttribute("data-notice"));
         }
+        var fAll = $("filterAll");
+        if (fAll) fAll.textContent = t("filter_all");
+        var fFree = $("filterFree");
+        if (fFree) fFree.textContent = t("filter_free");
+        var fPaid = $("filterPaid");
+        if (fPaid) fPaid.textContent = t("filter_paid");
+        var searchInput = $("gsSearch");
+        if (searchInput) searchInput.setAttribute("placeholder", t("search_placeholder"));
+
+        var mTitle = $("gsModalTitle");
+        if (mTitle) mTitle.textContent = t("dlg_activate_title");
+        var mLabel = $("gsModalLabel");
+        if (mLabel) mLabel.textContent = t("dlg_activate_label");
+        var licInput = $("gsLicenseInput");
+        if (licInput) licInput.setAttribute("placeholder", t("dlg_activate_placeholder"));
+        var mCancel = $("gsModalCancel");
+        if (mCancel) mCancel.textContent = t("dlg_activate_cancel");
+        var mSubmit = $("gsModalSubmit");
+        if (mSubmit && !mSubmit.disabled) mSubmit.textContent = t("dlg_activate_submit");
+    }
+
+    function filteredEntries() {
+        var q = searchQuery.toLowerCase().trim();
+        var s = state();
+        return entries.filter(function (e) {
+            if (currentFilter === "free" && e.paid) return false;
+            if (currentFilter === "paid" && !e.paid) return false;
+            if (q) {
+                var name = ((s.lang === "zh" && e.name.zh) || e.name.en || "").toLowerCase();
+                var desc = ((s.lang === "zh" && e.description.zh) || e.description.en || "").toLowerCase();
+                var id = (e.id || "").toLowerCase();
+                if (name.indexOf(q) < 0 && desc.indexOf(q) < 0 && id.indexOf(q) < 0) return false;
+            }
+            return true;
+        });
     }
 
     function renderEntry(e, s) {
@@ -421,12 +516,12 @@
         var desc = (s.lang === "zh" && e.description.zh) || e.description.en;
         if (desc) {
             var description = el("p", "gs-desc", desc);
-            description.title = desc; // full copy remains available when the compact card clamps it
+            description.title = desc;
             li.appendChild(description);
         }
         var ent = entitlements[e.id] || null;
         var lv = licenseStatus(e, ent);
-        var locked = e.paid && lv !== "valid";       // you don't own it -> Buy, not install actions
+        var locked = e.paid && lv !== "valid";
         var status = rec ? t("installed", { v: rec.version }) + " · " +
                            (rec.enabled ? t("state_" + rec.state) : t("state_disabled")) : "";
         var acts = !locked ? actionsFor(e, rec, s.appVersion) : [];
@@ -442,34 +537,62 @@
         var n = busy ? { text: t("busy"), error: false } : notices[e.id];
         if (busy && notices[e.id]) n = notices[e.id];
         if (n) li.appendChild(el("p", "gs-card-notice" + (n.error ? " is-error" : ""), n.text));
+
+        // Uniform Plan/Pricing slot for all cards (keeps every card equal height)
+        var plan = el("div", "gs-plan" + (locked ? " is-paid" : " is-free"));
+        var planHead = el("div", "gs-plan-head");
+        if (locked && e.pricing && e.pricing.tiers) {
+            var cheap = startingTier(e);
+            planHead.appendChild(el("span", "gs-plan-title", t("plan_tiers_title")));
+            if (cheap) planHead.appendChild(el("span", "gs-plan-hint", t("buy_starting", { price: cheap.price })));
+            plan.appendChild(planHead);
+            var tiers = el("div", "gs-plan-tiers");
+            e.pricing.tiers.forEach(function (tier) {
+                var a = el("a", "gs-buy-tier", "");
+                a.href = tier.checkoutUrl;
+                a.rel = "noopener noreferrer";
+                a.target = "_blank";
+                a.setAttribute("data-link", "buy");
+                a.setAttribute("data-plugin-id", e.id);
+                a.title = t("tier_" + tier.id) + " · " + tier.price + "\n" + t("checkout_note");
+                var tName = el("span", "gs-tier-name", t("tier_" + tier.id + "_name") || t("tier_" + tier.id));
+                var tPrice = el("span", "gs-tier-price", tier.price);
+                a.appendChild(tName);
+                a.appendChild(tPrice);
+                tiers.appendChild(a);
+            });
+            plan.appendChild(tiers);
+        } else {
+            planHead.appendChild(el("span", "gs-plan-title", t("plan_free_title")));
+            planHead.appendChild(el("span", "gs-plan-badge", t(e.paid ? "licensed" : "plan_free_tag")));
+            plan.appendChild(planHead);
+            var freeInfo = el("div", "gs-plan-free-info");
+            var freeIcon = el("span", "gs-plan-icon", "✓");
+            var freeText = el("span", "gs-plan-text", t(e.paid ? "plan_licensed_desc" : "plan_free_desc"));
+            freeInfo.appendChild(freeIcon);
+            freeInfo.appendChild(freeText);
+            plan.appendChild(freeInfo);
+        }
+        li.appendChild(plan);
+
         var box = el("div", "gs-actions");
         if (locked) {
-            var cheap = startingTier(e);
+            var startP = startingTier(e);
             var buyLabel = lv === "expired" ? t("renew")
-                         : (cheap ? t("buy_starting", { price: cheap.price }) : t("buy"));
-            var buy = el("button", "gs-btn is-primary gs-buy", buyLabel);
-            buy.type = "button";
-            buy.setAttribute("data-action", "buy");
+                         : (startP ? t("buy_starting", { price: startP.price }) : t("buy"));
+            var buy = el("a", "gs-btn is-primary gs-buy", buyLabel);
+            buy.href = (startP && startP.checkoutUrl) || "#";
+            buy.rel = "noopener noreferrer";
+            buy.target = "_blank";
+            buy.setAttribute("data-link", "buy");
             buy.setAttribute("data-plugin-id", e.id);
-            buy.disabled = busy;
             box.appendChild(buy);
-            if (e.pricing && e.pricing.tiers) {
-                var purchase = el("div", "gs-purchase");
-                purchase.hidden = true;
-                purchase.appendChild(el("p", "gs-checkout-note", t("checkout_note")));
-                var tiers = el("div", "gs-buy-tiers");
-                e.pricing.tiers.forEach(function (tier) {
-                    var a = el("a", "gs-buy-tier", t("tier_" + tier.id) + " · " + tier.price);
-                    a.href = tier.checkoutUrl;
-                    a.rel = "noopener noreferrer";
-                    a.target = "_blank";
-                    a.setAttribute("data-link", "buy");
-                    a.setAttribute("data-plugin-id", e.id);
-                    tiers.appendChild(a);
-                });
-                purchase.appendChild(tiers);
-                box.appendChild(purchase);
-            }
+
+            var actBtn = el("button", "gs-btn gs-btn-activate", t("btn_activate"));
+            actBtn.type = "button";
+            actBtn.setAttribute("data-action", "activate");
+            actBtn.setAttribute("data-plugin-id", e.id);
+            box.appendChild(actBtn);
         } else {
             acts.forEach(function (a, i) {
                 var b = el("button", "gs-btn" + (i === 0 ? " is-primary" : ""), t(a));
@@ -496,18 +619,25 @@
 
     function render() {
         var list = $("gsCatalog");
-        if (!list) return;                        // loaded into a page without the markup (a test)
+        if (!list) return;
         var s = state();
         while (list.firstChild) list.removeChild(list.firstChild);
-        entries.forEach(function (e) { list.appendChild(renderEntry(e, s)); });
+        var visible = filteredEntries();
+        visible.forEach(function (e) { list.appendChild(renderEntry(e, s)); });
         var count = $("gsCount");
-        if (count) count.textContent = String(entries.length).padStart(2, "0");
+        if (count) {
+            count.textContent = visible.length === entries.length
+                ? String(entries.length).padStart(2, "0")
+                : visible.length + " / " + entries.length;
+        }
         var empty = $("gsEmpty");
-        if (empty) { empty.hidden = entries.length > 0; empty.textContent = t("empty"); }
+        if (empty) {
+            empty.hidden = visible.length > 0;
+            empty.textContent = entries.length === 0 ? t("empty") : t("empty_search");
+        }
         reportHeight();
     }
 
-    // The shell sizes the frame; tell it only when the height changed.
     function reportHeight() {
         var h = Math.ceil(document.documentElement.scrollHeight);
         if (!isFinite(h)) return;
@@ -517,28 +647,78 @@
         post(build.resize(h));
     }
 
+    function openActivateModal(pluginId) {
+        var modal = $("gsActivateModal");
+        if (!modal) return;
+        var s = state();
+        var e = null;
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].id === pluginId) { e = entries[i]; break; }
+        }
+        var pluginName = e ? ((s.lang === "zh" && e.name.zh) || e.name.en) : pluginId;
+        var target = $("gsModalTargetPlugin");
+        if (target) target.textContent = pluginName;
+        var input = $("gsLicenseInput");
+        if (input) { input.value = ""; input.disabled = false; }
+        var err = $("gsModalError");
+        if (err) { err.hidden = true; err.textContent = ""; }
+        var submitBtn = $("gsModalSubmit");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = t("dlg_activate_submit");
+        }
+        modal.setAttribute("data-plugin-id", pluginId);
+        modal.hidden = false;
+        if (input) setTimeout(function () { input.focus(); }, 50);
+    }
+
+    function closeActivateModal() {
+        var modal = $("gsActivateModal");
+        if (modal) modal.hidden = true;
+        pendingActivation = null;
+    }
+
+    function submitActivation() {
+        var modal = $("gsActivateModal");
+        var input = $("gsLicenseInput");
+        var err = $("gsModalError");
+        var submitBtn = $("gsModalSubmit");
+        if (!modal || !input) return;
+        var key = (input.value || "").trim();
+        if (!key || key.length < 10 || key.length > 16384) {
+            if (err) { err.textContent = t("activate_empty_key"); err.hidden = false; }
+            return;
+        }
+        if (err) err.hidden = true;
+        var pluginId = modal.getAttribute("data-plugin-id") || "";
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = t("activate_submitting");
+        }
+        input.disabled = true;
+        pendingActivation = { pluginId: pluginId, opId: null, at: Date.now() };
+        post(env("activate", { license: key }));
+    }
+
     function onClick(ev) {
         var target = ev.target;
         var link = target && target.closest ? target.closest("a[data-link]") : null;
         if (link) {
-            if (window.parent === window) return; // ordinary browser: follow the safe https link
-            ev.preventDefault();                  // the frame has no allow-popups: the shell opens it
+            if (window.parent === window) return;
+            ev.preventDefault();
             post(build.openLink(link.href));
             return;
         }
         var btn = target && target.closest ? target.closest("button[data-action]") : null;
         if (btn && !btn.disabled) {
-            if (window.parent === window && !shell) { showNotice("standalone"); return; }
-            if (btn.getAttribute("data-action") === "buy") {
-                var card = btn.closest(".gs-card");
-                var purchase = card ? card.querySelector(".gs-purchase") : null;
-                if (purchase) {
-                    purchase.hidden = !purchase.hidden;
-                    card.classList.toggle("is-purchasing", !purchase.hidden);
-                }
+            var action = btn.getAttribute("data-action");
+            var pluginId = btn.getAttribute("data-plugin-id");
+            if (action === "activate") {
+                openActivateModal(pluginId);
                 return;
             }
-            act(btn.getAttribute("data-action"), btn.getAttribute("data-plugin-id"));
+            if (window.parent === window && !shell) { showNotice("standalone"); return; }
+            act(action, pluginId);
         }
     }
 
@@ -550,6 +730,36 @@
         n.hidden = false;
     }
 
+    function onFilterClick(ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest(".gs-filter-btn") : null;
+        if (!btn) return;
+        var f = btn.getAttribute("data-filter");
+        if (f !== "all" && f !== "free" && f !== "paid") return;
+        currentFilter = f;
+        var btns = $("gsFilters") ? $("gsFilters").querySelectorAll(".gs-filter-btn") : [];
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.toggle("is-active", btns[i].getAttribute("data-filter") === f);
+        }
+        render();
+    }
+
+    function onSearchInput(ev) {
+        searchQuery = ev.target.value || "";
+        var clearBtn = $("gsSearchClear");
+        if (clearBtn) clearBtn.hidden = !searchQuery;
+        render();
+    }
+
+    function onSearchClear() {
+        var searchInput = $("gsSearch");
+        if (searchInput) searchInput.value = "";
+        searchQuery = "";
+        var clearBtn = $("gsSearchClear");
+        if (clearBtn) clearBtn.hidden = true;
+        render();
+        if (searchInput) searchInput.focus();
+    }
+
     function boot() {
         if (wired) return;
         wired = true;
@@ -558,8 +768,32 @@
         applyDocument();
         var list = $("gsCatalog");
         if (list) list.addEventListener("click", onClick);
+
+        var filters = $("gsFilters");
+        if (filters) filters.addEventListener("click", onFilterClick);
+        var searchInput = $("gsSearch");
+        if (searchInput) searchInput.addEventListener("input", onSearchInput);
+        var searchClear = $("gsSearchClear");
+        if (searchClear) searchClear.addEventListener("click", onSearchClear);
+
+        var modalClose = $("gsModalClose");
+        if (modalClose) modalClose.addEventListener("click", closeActivateModal);
+        var modalCancel = $("gsModalCancel");
+        if (modalCancel) modalCancel.addEventListener("click", closeActivateModal);
+        var modalSubmit = $("gsModalSubmit");
+        if (modalSubmit) modalSubmit.addEventListener("click", submitActivation);
+        var modalBackdrop = $("gsActivateModal");
+        if (modalBackdrop) {
+            modalBackdrop.addEventListener("click", function (e) {
+                if (e.target === modalBackdrop) closeActivateModal();
+            });
+        }
+        window.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") closeActivateModal();
+        });
+
         post(build.ready());
-        if (!list) return;                        // no page to fill
+        if (!list) return;
         fetch("catalog.json", { credentials: "omit", cache: "no-store" })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (doc) { if (!doc) showNotice("offline"); else loadCatalog(doc); })

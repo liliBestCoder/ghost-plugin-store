@@ -12,8 +12,24 @@
 <body>
 <header class="gs-header">
   <div class="gs-heading">
-    <h1 id="gsTitle">Plugins</h1>
-    <span id="gsCount" class="gs-count"></span>
+    <div class="gs-heading-left">
+      <h1 id="gsTitle">Plugins</h1>
+      <span id="gsCount" class="gs-count"></span>
+    </div>
+    <div class="gs-controls">
+      <nav class="gs-filters" id="gsFilters" aria-label="Plugin filter">
+        <button type="button" class="gs-filter-btn is-active" data-filter="all" id="filterAll">All</button>
+        <button type="button" class="gs-filter-btn" data-filter="free" id="filterFree">Free</button>
+        <button type="button" class="gs-filter-btn" data-filter="paid" id="filterPaid">Paid</button>
+      </nav>
+      <div class="gs-search-wrap">
+        <svg class="gs-search-icon" viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true">
+          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+        </svg>
+        <input type="search" id="gsSearch" class="gs-search-input" placeholder="Search..." autocomplete="off" spellcheck="false" aria-label="Search plugins">
+        <button type="button" id="gsSearchClear" class="gs-search-clear" aria-label="Clear search" hidden>&times;</button>
+      </div>
+    </div>
   </div>
   <p id="gsNotice" class="gs-notice" role="status" hidden></p>
 </header>
@@ -21,5 +37,23 @@
   <ul id="gsCatalog" class="gs-catalog" aria-labelledby="gsTitle"></ul>
   <p id="gsEmpty" class="gs-empty" hidden></p>
 </main>
+<div id="gsActivateModal" class="gs-modal-backdrop" hidden>
+  <div class="gs-modal-dialog" role="dialog" aria-labelledby="gsModalTitle" aria-modal="true">
+    <div class="gs-modal-header">
+      <h2 id="gsModalTitle" class="gs-modal-title">Activate License</h2>
+      <button type="button" class="gs-modal-close" id="gsModalClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="gs-modal-body">
+      <p id="gsModalTargetPlugin" class="gs-modal-plugin-name"></p>
+      <label for="gsLicenseInput" id="gsModalLabel" class="gs-modal-label">Enter license key:</label>
+      <textarea id="gsLicenseInput" class="gs-license-textarea" rows="4" placeholder="Paste your license key here..." spellcheck="false"></textarea>
+      <p id="gsModalError" class="gs-modal-error" hidden></p>
+    </div>
+    <div class="gs-modal-footer">
+      <button type="button" class="gs-btn gs-btn-secondary" id="gsModalCancel">Cancel</button>
+      <button type="button" class="gs-btn gs-btn-primary" id="gsModalSubmit">Activate Now</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
