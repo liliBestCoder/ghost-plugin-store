@@ -234,19 +234,50 @@ html[data-mode="light"] .gs-plan {
 }
 .gs-btn-primary:hover:not(:disabled) { background: var(--button-hover); border-color: var(--button-hover); }
 
-@media (max-width: 760px) {
-    body { padding: 16px; }
-    .gs-heading { flex-direction: column; align-items: stretch; }
-    .gs-controls { width: 100%; justify-content: space-between; margin-left: 0; }
-    .gs-search-wrap { flex: 1 1 160px; max-width: 100%; }
+@media (max-width: 640px) {
+    body { padding: 14px 14px 20px; }
+    .gs-header { margin-bottom: 14px; }
+    .gs-heading {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 8px 10px;
+        align-items: center;
+        min-height: 0;
+    }
+    .gs-heading-left {
+        grid-column: 1 / 2;
+        grid-row: 1 / 2;
+    }
+    .gs-heading-left h1 {
+        font-size: 18px;
+    }
+    .gs-controls {
+        display: contents;
+    }
+    .gs-filters {
+        grid-column: 2 / 3;
+        grid-row: 1 / 2;
+        justify-self: end;
+        margin-left: auto;
+    }
+    .gs-search-wrap {
+        grid-column: 1 / 3;
+        grid-row: 2 / 3;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+    .gs-search-input {
+        height: 28px;
+        font-size: 12px;
+    }
 }
 @media (max-width: 480px) {
     .gs-btn[data-action="install"]::before, .gs-link::after { display: none; }
-    .gs-controls { flex-direction: column; align-items: stretch; }
-    .gs-filters { width: 100%; justify-content: space-around; }
-    .gs-search-wrap { width: 100%; max-width: 100%; }
 }
 @media (max-width: 339px) {
-    body { padding: 12px; }
+    body { padding: 10px; }
+    .gs-heading-left h1 { font-size: 16px; }
+    .gs-filter-btn { padding: 2px 7px; font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .gs-card, .gs-btn, .gs-buy-tier { transition: none; } }
