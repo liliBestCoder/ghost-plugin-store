@@ -1,30 +1,32 @@
 # ghost-license-server
 
-插件商店付费授权的 Cloudflare Worker 微后端。职责二：接 Lemon Squeezy 的 webhook、为一次性付款签发固定期限授权并存进 KV；对外暴露 `/api/verify`，供 Ghost 客户端用买的许可证密钥激活付费插件。纯 JavaScript、零依赖、无框架。
+插件商店付费授权的 Cloudflare Worker 微后端。职责二：接支付平台（面包多 mbd.pub / Lemon Squeezy）的 webhook、为一次性付款签发固定期限授权并存进 KV；对外暴露 `/api/verify`，供 Ghost 客户端用购买后获得的许可证密钥激活付费插件。纯 JavaScript、零依赖、无框架。
 
 ```
 Ghost 客户端 ── POST /api/verify {key, plugin} ──▶ Worker ── KV: lic:<key>
-Lemon Squeezy ── webhook (order_created) ──▶  Worker ──▶ KV: lic:<key>
-商店(静态) ── "购买"=<a> ──▶ LS 结账页 ──邮件──▶ 买家手里的 license key
+面包多 (mbd.pub) ── webhook (charge_succeeded) ──▶ Worker ──▶ KV: lic:<key>
+商店(静态) ── "购买"=<a> ──▶ 面包多结账页 ──获得Key──▶ 买家在客户端启用
 ```
 
-## Lemon Squeezy 开通（做完才能端到端联调）
+## 面包多（mbd.pub）开通与对接
 
-1. 注册并**激活店铺**（LS 要求先完成店铺激活/结算设置）。
-2. 每个付费插件在 LS 后台建一个 **Product**（商品）。
-3. 每个 Product 建 **3 个 Variant**（档位），交付方式选 **License keys**（这样 LS 会把 key 邮件给买家，并出现在 webhook 里）。变体命名用约定 `GHOST:<plugin-id>:month|year|perpetual`（这样 `VARIANT_MAP` 为空也能解析）；价格与 `catalog.json` 的 `pricing.tiers` 对应。
-4. 把每个 variant 的 **hosted checkout URL**（`https://store.lemonsqueezy.com/checkout/buy/<id>`）填进对应插件 `catalog.json` 的 `pricing.tiers[].checkoutUrl`。
-5. **开启 Webhooks**，指向 `https://<worker-subdomain>.workers.dev/api/webhook`，至少订阅 `order_created`（建议再加 `refunded`）。记下页面上给的 **Signing secret**。
-6. 记下你的数字 **Store ID**（店铺 URL 里能看到）。
+1. 在面包多发布付费作品（如《茄盒 Snagbox》，ID: `1130783`），配置多版本定价（月度 19.9 / 季度 59.9 / 年度 179.9）。
+2. 在 `catalog.json` 的 `pricing.tiers[].checkoutUrl` 填入对应的购买页面地址（如 `https://mbd.pub/o/bread/mbd-1130783`）。
+3. **开启 Webhook 回调**：
+   - 在面包多后台进入「开发者设置 / API / Webhook」；
+   - 将回调 URL 设置为：`https://<worker-subdomain>.workers.dev/api/webhook`；
+   - 买家使用微信支付或支付宝成功后，面包多向 Worker 发送 `charge_succeeded` 事件；
+   - Worker 自动根据金额与周期计算过期时间，签发并在 KV 中存入正版 License Key（同时以订单号作为 alias 索引，买家直接输入订单号或 Key 均可成功激活）。
 
 ## 配置与环境变量
 
 | 变量 | 类型 | 说明 |
 |---|---|---|
-| `STORE_ID` | wrangler vars | 数字店铺 ID，`wrangler.jsonc` 里 `vars.STORE_ID` |
+| `DEFAULT_PLUGIN_ID` | wrangler vars | 默认插件 ID，例如 `com.ghostproxifier.snagbox` |
+| `STORE_ID` | wrangler vars | 可选，数字店铺 ID（若兼顾 LS） |
 | `LICENSES` | KV 绑定 | 授权记录，`wrangler.jsonc` 的 `kv_namespaces` |
-| `LEMONSQUEEZY_WEBHOOK_SECRET` | secret | webhook Signing secret，`wrangler secret put` |
-| `VARIANT_MAP` | secret | 可选 JSON：`{"<variant_id 或 name>":{"plugin":"com.example.paid","tier":"month"}}`，为空时靠 `GHOST:` 命名约定兜底 |
+| `LEMONSQUEEZY_WEBHOOK_SECRET` | secret | 可选，LS webhook Signing secret |
+| `VARIANT_MAP` | secret | 可选 JSON 映射 |
 | `ALLOWED_ORIGIN` | secret | 可选，CORS 允许的客户端 origin |
 
 本地开发把 secret 填进 `.dev.vars`（复制自 `.dev.vars.example`）；生产用 `wrangler secret put`。**秘密绝不提交。**
@@ -35,29 +37,22 @@ Lemon Squeezy ── webhook (order_created) ──▶  Worker ──▶ KV: lic
 cd license-server
 npm i -g wrangler        # 或项目内 devDependency
 wrangler kv namespace create LICENSES   # 建 KV，把返回的 id 填进 wrangler.jsonc
-wrangler secret put LEMONSQUEEZY_WEBHOOK_SECRET
-wrangler secret put VARIANT_MAP        # 可选，可跳过
-wrangler secret put ALLOWED_ORIGIN     # 可选
 wrangler deploy
 ```
 
 ## 客户端要用到的契约（Ghost 客户端侧实现）
 
-**激活**：客户端设置页让用户输入收到的 license key，然后 `POST /api/verify`：
+**激活**：客户端设置页让用户输入收到的 license key 或订单号，然后 `POST /api/verify`：
 
 ```jsonc
 // 请求
-{ "key": "<license key>", "plugin": "com.example.paid", "device": "<可选机器标识>" }
+{ "key": "<license key>", "plugin": "com.ghostproxifier.snagbox", "device": "<可选机器标识>" }
 // 成功
-{ "valid": true, "plugin": "com.example.paid", "tier": "month", "expiresAt": 1717200000000 }
+{ "valid": true, "plugin": "com.ghostproxifier.snagbox", "tier": "month", "expiresAt": 1717200000000 }
 // 失败（HTTP 200，看 reason）：not_found | expired | wrong_plugin | rate_limited(429) | bad_key(400)
 { "valid": false, "reason": "expired", "plugin": "...", "tier": "month" }
 ```
 
-- `expiresAt` 是 epoch 毫秒，**`null` 表示永久买断**。
-- 客户端把验证结果记在本机，之后在下发的 `state` 消息里带上 `entitlements`（见商店侧 README / store.js 契约）：`entitlements:[{ id, licensed:true, tier, expiresAt }]`，商店据此显示「已授权」并停售。
+- `expiresAt` 是到期时间的 epoch 毫秒时间戳。
+- 客户端把验证结果记在本机，之后在下发的 `state` 消息里带上 `entitlements`：`entitlements:[{ id, licensed:true, tier, expiresAt }]`，商店据此显示「已授权」并停售。
 - 安全：license key 是买家的激活凭证，只在「客户端 ↔ Worker」之间传输，绝不经由静态商店页、绝不进 `catalog.json` 或 postMessage。
-
-## 现状与限制
-
-代码骨架已完成并（用 mock KV + 真实 HTTP 请求）通过单测：webhook 验签、order_created 落库、verify 的 valid / not_found / expired。**端到端（真实结账 → LS webhook → 客户端激活）需要等 LS 账号开通并部署后才能联调。**

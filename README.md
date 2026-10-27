@@ -10,7 +10,7 @@
 | `v1/store.js` | 唯一的脚本，暴露 `window.ghostStorePage` |
 | `v1/store.css` | 响应式卡片布局、深色/浅色主题，只用系统字体 |
 | `v1/icons/` | 同源插件图标与缺失或加载失败时的默认图标 |
-| `v1/catalog.json` | 展示用目录：`{v:1, plugins:[{id, version?, minAppVersion?, name:{en, zh?}, description?, homepage?, icon?, paid?, pricing?}]}`。付费插件可带 `paid:true` 与 `pricing:{currency, tiers:[{id: month|year|perpetual, amount, price, checkoutUrl}]}`，其中 `checkoutUrl` 是发布者在 Lemon Squeezy 后台生成的结账链接，点「购买」即打开。**只用于显示**——装什么、装哪个版本永远由 Ghost 自己验过签的注册表决定，与这份文件无关 |
+| `v1/catalog.json` | 展示用目录：`{v:1, plugins:[{id, version?, minAppVersion?, name:{en, zh?}, description?, homepage?, icon?, paid?, pricing?}]}`。付费插件可带 `paid:true` 与 `pricing:{currency, tiers:[{id: month|quarter|year, amount, price, checkoutUrl}]}`，其中 `checkoutUrl` 是发布者在面包多（mbd.pub）或支付后台生成的结账链接，点「购买」即打开。**只用于显示**——装什么、装哪个版本永远由 Ghost 自己验过签的注册表决定，与这份文件无关 |
 
 ## 商店页不在信任链里，所以它只说一句话
 
@@ -24,17 +24,17 @@
 
 ## 购买与许可（付费插件）
 
-静态页不承载支付：付费插件的「购买」只是一个普通 `<a data-link="buy" href={checkoutUrl}>`，复用 `openLink` 在客户端打开、普通浏览器新标签打开 Lemon Squeezy 结账页。页面**从不**携带 license key、不调 LS API、也不新增任何 postMessage 消息（依旧只传 `id`/`url`/`height`）。
+静态页不承载支付：付费插件的「购买」只是一个普通 `<a data-link="buy" href={checkoutUrl}>`，复用 `openLink` 在客户端打开、普通浏览器新标签打开面包多（mbd.pub）结账页。页面**从不**携带 license key、不调支付 API、也不新增任何 postMessage 消息（依旧只传 `id`/`url`/`height`）。
 
 ```
-商店卡片 ──购买=<a>──▶ Lemon Squeezy 结账页 ──付款──▶ 邮件发 license key ──▶ 买家在客户端启用
+商店卡片 ──购买=<a>──▶ 面包多结账页 ──付款──▶ 界面/订单号展示 License Key ──▶ 买家在客户端启用
                                                           │
-                                webhook order_created ────▶ license-server (Cloudflare Worker) ──▶ KV: lic:<key>
+                                webhook charge_succeeded ────▶ license-server (Cloudflare Worker) ──▶ KV: lic:<key>
                                                           │      ▲
                                                           └─Post /api/verify──┤ Ghost 客户端激活
 ```
 
-买家付款后在 Ghost 客户端里用邮件里的 license key 激活；一个 Cloudflare Worker（`license-server/`）接 LS webhook、存固定期限授权、并暴露 `/api/verify` 供客户端校验。商店从客户端 `state.entitlements`（可选下发）读授权状态：已授权显示「已授权」，过期显示「续费」，未授权或客户端尚未实现时显示「购买」。**高级插件均为一次性买固定期限（1 个月 / 12 个月 / 永久）、手动续费**——因为支付宝/微信只支持一次性付款，故不用自动续费订阅。
+买家付款后在 Ghost 客户端里用邮件里的 license key 激活；一个 Cloudflare Worker（`license-server/`）接面包多 webhook（charge_succeeded）、存固定期限授权、并暴露 `/api/verify` 供客户端校验。商店从客户端 `state.entitlements`（可选下发）读授权状态：已授权显示「已授权」，过期显示「续费」，未授权或客户端尚未实现时显示「购买」。**高级插件均为一次性买固定期限（1 个月 / 3 个月 / 12 个月）、手动续费**——因为支付宝/微信只支持一次性付款，故不用自动续费订阅。
 
 ## 托管要求（部署时必须满足）
 

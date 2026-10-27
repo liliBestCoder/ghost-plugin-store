@@ -28,7 +28,7 @@
     var RUN_STATES = ["stopped", "running", "crashed"];
     var PHASES = ["resolving", "downloading", "verifying", "extracting", "committing"];
     var STATE_CHANGING = ["install", "upgrade", "uninstall", "enable", "disable"];
-    var TIER_IDS = ["month", "year", "perpetual"];
+    var TIER_IDS = ["month", "quarter", "year"];
 
     var TEXT = {
         en: {
@@ -44,9 +44,9 @@
             err_generic: "Something went wrong.", empty: "The catalog is empty.",
             offline: "The catalog could not be loaded.",
             buy: "Buy", renew: "Renew", licensed: "Licensed", expired: "License expired",
-            tier_month: "1 month", tier_year: "12 months", tier_perpetual: "Perpetual",
+            tier_month: "1 month", tier_quarter: "3 months", tier_year: "12 months", tier_perpetual: "Perpetual",
             buy_starting: "Buy · {price}",
-            checkout_note: "You'll pay on the Lemon Squeezy checkout; after buying, open Ghost Proxifier and enter the license key emailed to you.",
+            checkout_note: "You'll pay on the Mianbaoduo checkout (supports WeChat Pay & Alipay); after buying, open Ghost Proxifier and enter the license key provided to you.",
             unknown_license: "License status unknown. Buy or activate in Ghost Proxifier.",
             plan_tiers_title: "Pricing tiers",
             plan_free_title: "License",
@@ -54,6 +54,7 @@
             plan_free_desc: "Open source · No purchase required",
             plan_licensed_desc: "Commercial license active",
             tier_month_name: "1 mo",
+            tier_quarter_name: "3 mo",
             tier_year_name: "12 mo",
             tier_perpetual_name: "Lifetime",
             filter_all: "All",
@@ -85,9 +86,9 @@
             err_generic: "出了点问题。", empty: "目录是空的。",
             offline: "无法加载插件目录。",
             buy: "购买", renew: "续费", licensed: "已授权", expired: "许可已过期",
-            tier_month: "1 个月", tier_year: "12 个月", tier_perpetual: "永久买断",
+            tier_month: "1 个月", tier_quarter: "3 个月", tier_year: "12 个月", tier_perpetual: "永久买断",
             buy_starting: "购买 · {price}",
-            checkout_note: "付款将在 Lemon Squeezy 结账页完成；购买后请打开 Ghost Proxifier，输入邮件中的许可密钥进行激活。",
+            checkout_note: "付款将在面包多结账页完成（支持微信/支付宝）；购买后请打开 Ghost Proxifier，输入获得的许可密钥进行激活。",
             unknown_license: "许可状态未知——请在 Ghost Proxifier 中购买或激活。",
             plan_tiers_title: "授权方案",
             plan_free_title: "使用许可",
@@ -95,6 +96,7 @@
             plan_free_desc: "无需购买 · 永久免费即装即用",
             plan_licensed_desc: "商业授权已生效",
             tier_month_name: "1 个月",
+            tier_quarter_name: "3 个月",
             tier_year_name: "12 个月",
             tier_perpetual_name: "永久",
             filter_all: "全部",

@@ -7,7 +7,8 @@
   "main": "src/index.js",
   "compatibility_date": "2026-10-20",
   "vars": {
-    "STORE_ID": "REPLACE_ME"
+    "STORE_ID": "REPLACE_ME",
+    "DEFAULT_PLUGIN_ID": "com.ghostproxifier.snagbox"
   },
   "kv_namespaces": [
     { "binding": "LICENSES", "id": "REPLACE_ME" }

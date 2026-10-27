@@ -45,6 +45,45 @@
       },
       "homepage": "https://github.com/xieyos/ghost-plugin-port-forwarder",
       "icon": "icons/port-forwarder.png"
+    },
+    {
+      "id": "com.ghostproxifier.snagbox",
+      "version": "1.0.0",
+      "minAppVersion": "1.2.1",
+      "name": {
+        "zh": "茄盒（Snagbox）",
+        "en": "Snagbox"
+      },
+      "description": {
+        "zh": "面向 AI Agent 的应用流量采集与结构化分析工具。配合 Ghost 进程路由，把网络请求保存为 SQLite 数据并通过标准 MCP 协议供 Agent 自主分析。",
+        "en": "Network traffic capture and analysis tool for AI Agents. Routes target processes through Ghost into local SQLite and exposes read-only SQL via MCP."
+      },
+      "homepage": "https://ghostproxifier.com",
+      "icon": "icons/snagbox.png",
+      "paid": true,
+      "pricing": {
+        "currency": "CNY",
+        "tiers": [
+          {
+            "id": "month",
+            "amount": 19.9,
+            "price": "¥19.9",
+            "checkoutUrl": "https://mbd.pub/o/bread/mbd-1130783"
+          },
+          {
+            "id": "quarter",
+            "amount": 59.9,
+            "price": "¥59.9",
+            "checkoutUrl": "https://mbd.pub/o/bread/mbd-1130783"
+          },
+          {
+            "id": "year",
+            "amount": 179.9,
+            "price": "¥179.9",
+            "checkoutUrl": "https://mbd.pub/o/bread/mbd-1130783"
+          }
+        ]
+      }
     }
   ]
 }
