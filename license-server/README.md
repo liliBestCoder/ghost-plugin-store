@@ -11,7 +11,7 @@ Ghost 客户端 ── POST /api/verify {key, plugin} ──▶ Worker ── KV
 ## 面包多（mbd.pub）开通与对接
 
 1. 在面包多发布付费作品（如《茄盒 Snagbox》，ID: `1130783`），配置多版本定价（月度 19.9 / 季度 59.9 / 年度 179.9）。
-2. 在 `catalog.json` 的 `pricing.tiers[].checkoutUrl` 填入对应的购买页面地址（如 `https://mbd.pub/o/bread/mbd-1130783`）。
+2. 在 `catalog.json` 的 `pricing.tiers[].checkoutUrl` 填入对应的购买页面地址（如 `https://mbd.pub/o/bread/YZaWkp1xZw==`）。
 3. **开启 Webhook 回调**：
    - 在面包多后台进入「开发者设置 / API / Webhook」；
    - 将回调 URL 设置为：`https://<worker-subdomain>.workers.dev/api/webhook`；

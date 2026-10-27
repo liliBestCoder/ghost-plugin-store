@@ -68,19 +68,19 @@
             "id": "month",
             "amount": 19.9,
             "price": "¥19.9",
-            "checkoutUrl": "https://mbd.pub/o/bread/mbd-1130783"
+            "checkoutUrl": "https://mbd.pub/o/bread/YZaWkp1xZw=="
           },
           {
             "id": "quarter",
             "amount": 59.9,
             "price": "¥59.9",
-            "checkoutUrl": "https://mbd.pub/o/bread/mbd-1130783"
+            "checkoutUrl": "https://mbd.pub/o/bread/YZaWkp1xZw=="
           },
           {
             "id": "year",
             "amount": 179.9,
             "price": "¥179.9",
-            "checkoutUrl": "https://mbd.pub/o/bread/mbd-1130783"
+            "checkoutUrl": "https://mbd.pub/o/bread/YZaWkp1xZw=="
           }
         ]
       }
