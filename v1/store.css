@@ -126,14 +126,18 @@ html[data-mode="light"] .gs-plan {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 3px 2px; border: 1px solid var(--line); border-radius: 5px;
     background: var(--card); color: var(--text); text-decoration: none;
-    transition: border-color 150ms ease, background-color 150ms ease;
+    font-family: inherit; font-size: inherit; cursor: pointer; outline: none;
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
     text-align: center; min-width: 0;
 }
 .gs-buy-tier:hover {
     border-color: var(--accent); background: rgba(138, 175, 255, .08);
 }
-.gs-buy-tier:first-child {
+.gs-buy-tier.is-active,
+.gs-buy-tier.is-selected {
     border-color: var(--button);
+    background: rgba(138, 175, 255, .12);
+    box-shadow: 0 0 0 1px var(--button);
 }
 .gs-tier-name {
     font-size: 9px; line-height: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
@@ -141,7 +145,8 @@ html[data-mode="light"] .gs-plan {
 .gs-tier-price {
     font-size: 11px; line-height: 14px; font-weight: 700; color: var(--text); white-space: nowrap;
 }
-.gs-buy-tier:first-child .gs-tier-price {
+.gs-buy-tier.is-active .gs-tier-price,
+.gs-buy-tier.is-selected .gs-tier-price {
     color: var(--accent);
 }
 .gs-plan-free-info {

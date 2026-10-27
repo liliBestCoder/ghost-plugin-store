@@ -543,25 +543,35 @@
         // Uniform Plan/Pricing slot for all cards (keeps every card equal height)
         var plan = el("div", "gs-plan" + (locked ? " is-paid" : " is-free"));
         var planHead = el("div", "gs-plan-head");
-        if (locked && e.pricing && e.pricing.tiers) {
+        var tierButtons = [];
+        var selectedTier = null;
+        var planHint = null;
+
+        if (locked && e.pricing && e.pricing.tiers && e.pricing.tiers.length) {
             var cheap = startingTier(e);
+            selectedTier = cheap || e.pricing.tiers[0];
             planHead.appendChild(el("span", "gs-plan-title", t("plan_tiers_title")));
-            if (cheap) planHead.appendChild(el("span", "gs-plan-hint", t("buy_starting", { price: cheap.price })));
+            if (cheap) {
+                planHint = el("span", "gs-plan-hint", t("buy_starting", { price: cheap.price }));
+                planHead.appendChild(planHint);
+            }
             plan.appendChild(planHead);
             var tiers = el("div", "gs-plan-tiers");
             e.pricing.tiers.forEach(function (tier) {
-                var a = el("a", "gs-buy-tier", "");
-                a.href = tier.checkoutUrl;
-                a.rel = "noopener noreferrer";
-                a.target = "_blank";
-                a.setAttribute("data-link", "buy");
-                a.setAttribute("data-plugin-id", e.id);
-                a.title = t("tier_" + tier.id) + " · " + tier.price + "\n" + t("checkout_note");
+                var btn = el("button", "gs-buy-tier", "");
+                btn.type = "button";
+                btn.setAttribute("data-plugin-id", e.id);
+                btn.setAttribute("data-tier-id", tier.id);
+                btn.title = t("tier_" + tier.id) + " · " + tier.price + "\n" + t("checkout_note");
                 var tName = el("span", "gs-tier-name", t("tier_" + tier.id + "_name") || t("tier_" + tier.id));
                 var tPrice = el("span", "gs-tier-price", tier.price);
-                a.appendChild(tName);
-                a.appendChild(tPrice);
-                tiers.appendChild(a);
+                btn.appendChild(tName);
+                btn.appendChild(tPrice);
+                if (tier === selectedTier) {
+                    btn.classList.add("is-active");
+                }
+                tierButtons.push({ el: btn, tier: tier });
+                tiers.appendChild(btn);
             });
             plan.appendChild(tiers);
         } else {
@@ -579,8 +589,8 @@
 
         var box = el("div", "gs-actions");
         if (locked) {
-            var startP = startingTier(e);
-            var buyLabel = lv === "expired" ? t("renew")
+            var startP = selectedTier || startingTier(e);
+            var buyLabel = lv === "expired" ? (t("renew") + " · " + (startP ? startP.price : ""))
                          : (startP ? t("buy_starting", { price: startP.price }) : t("buy"));
             var buy = el("a", "gs-btn is-primary gs-buy", buyLabel);
             buy.href = (startP && startP.checkoutUrl) || "#";
@@ -589,6 +599,31 @@
             buy.setAttribute("data-link", "buy");
             buy.setAttribute("data-plugin-id", e.id);
             box.appendChild(buy);
+
+            tierButtons.forEach(function (tb) {
+                tb.el.addEventListener("click", function (ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    var wasActive = tb.el.classList.contains("is-active");
+                    selectedTier = tb.tier;
+                    tierButtons.forEach(function (item) {
+                        item.el.classList.toggle("is-active", item === tb);
+                    });
+                    buy.href = tb.tier.checkoutUrl || "#";
+                    buy.textContent = lv === "expired" ? (t("renew") + " · " + tb.tier.price)
+                                                       : t("buy_starting", { price: tb.tier.price });
+                    if (planHint) {
+                        planHint.textContent = t("buy_starting", { price: tb.tier.price });
+                    }
+                    if (wasActive && tb.tier.checkoutUrl) {
+                        if (window.parent !== window) {
+                            post(build.openLink(tb.tier.checkoutUrl));
+                        } else {
+                            window.open(tb.tier.checkoutUrl, "_blank", "noopener,noreferrer");
+                        }
+                    }
+                });
+            });
 
             var actBtn = el("button", "gs-btn gs-btn-activate", t("btn_activate"));
             actBtn.type = "button";
