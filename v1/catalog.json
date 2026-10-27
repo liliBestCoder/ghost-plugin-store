@@ -58,7 +58,7 @@
         "zh": "面向 AI Agent 的应用流量采集与结构化分析工具。配合 Ghost 进程路由，把网络请求保存为 SQLite 数据并通过标准 MCP 协议供 Agent 自主分析。",
         "en": "Network traffic capture and analysis tool for AI Agents. Routes target processes through Ghost into local SQLite and exposes read-only SQL via MCP."
       },
-      "homepage": "https://ghostproxifier.com",
+      "homepage": "https://github.com/liliBestCoder/snagbox",
       "icon": "icons/snagbox.png",
       "paid": true,
       "pricing": {
