@@ -2,6 +2,8 @@ Plugin artwork copied unchanged from the plugin source repositories:
 - events-viewer.png: liliBestCoder/ghost-plugin-events-viewer
 - showcase.png: liliBestCoder/ghost-plugin-showcase
 - port-forwarder.png: https://github.com/xieyos/ghost-plugin-port-forwarder
+- chrome-launcher.png: liliBestCoder/ghost-chrome-launcher
+- flow-stats.png: liliBestCoder/ghost-flow-stats
 
 License for port-forwarder.png:
 

@@ -84,6 +84,36 @@
           }
         ]
       }
+    },
+    {
+      "id": "com.ghostproxifier.chrome-launcher",
+      "version": "1.0.0",
+      "minAppVersion": "1.2.2",
+      "name": {
+        "zh": "Chrome 多开",
+        "en": "Chrome Launcher"
+      },
+      "description": {
+        "zh": "为每个 Chrome 实例设置独立数据目录、Target 别名和上游节点，并手动启停。",
+        "en": "Configure separate Chrome data directories, Target names and upstream nodes, then start or stop each instance manually."
+      },
+      "homepage": "https://github.com/liliBestCoder/ghost-chrome-launcher",
+      "icon": "icons/chrome-launcher.png"
+    },
+    {
+      "id": "com.ghostproxifier.flow-stats",
+      "version": "1.0.0",
+      "minAppVersion": "1.2.2",
+      "name": {
+        "zh": "流量历史",
+        "en": "Flow Stats"
+      },
+      "description": {
+        "zh": "记录 Ghost 进程流量，查看历史累计、每日流量、进程与节点排行。",
+        "en": "Record Ghost process traffic and review historical totals, daily traffic, and process and upstream rankings."
+      },
+      "homepage": "https://github.com/liliBestCoder/ghost-flow-stats",
+      "icon": "icons/flow-stats.png"
     }
   ]
 }
